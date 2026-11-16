@@ -1,0 +1,404 @@
+{
+  "metadata": {
+    "dataset_name": "Jena Climate Multi-Parameter Meteorological Dataset",
+    "source": "Max Planck Institute for Biogeochemistry (MPI-BGC), Jena, Germany",
+    "license": "Creative Commons Attribution 4.0 International (CC-BY 4.0)",
+    "sampling_interval": "10 minutes (aggregated to hourly for sensor station telemetry)",
+    "features": [
+      "temperature",
+      "humidity",
+      "pressure",
+      "wind_speed",
+      "solar_radiation",
+      "temp_rolling_mean_6h",
+      "temp_rolling_std_6h",
+      "pressure_rate_of_change",
+      "temp_rate_of_change",
+      "psychrometric_dew_spread"
+    ]
+  },
+  "train_samples": 11200,
+  "val_samples": 2400,
+  "test_samples": 2400,
+  "benchmark_anomalies": 84,
+  "models": {
+    "Isolation Forest": {
+      "name": "Isolation Forest",
+      "code": "IF-2026.4",
+      "version": "v4.1.0-prod",
+      "precision": 0.0507,
+      "recall": 0.9762,
+      "f1_score": 0.0964,
+      "accuracy": 0.3596,
+      "roc_auc": 0.6574,
+      "calibrated_threshold": 1.0,
+      "false_positive_rate": 0.6628,
+      "detection_rate": 0.9762,
+      "training_time_sec": 1.27,
+      "latency_ms": 0.04,
+      "throughput_samples_sec": 26252,
+      "confusion_matrix": {
+        "tp": 82,
+        "fp": 1535,
+        "fn": 2,
+        "tn": 781
+      },
+      "observations_trained": 11200,
+      "last_trained": "2026-11-16 11:18 UTC"
+    },
+    "Local Outlier Factor": {
+      "name": "Local Outlier Factor",
+      "code": "LOF-2026.2",
+      "version": "v3.2.0-prod",
+      "precision": 0.1338,
+      "recall": 0.9048,
+      "f1_score": 0.2331,
+      "accuracy": 0.7917,
+      "roc_auc": 0.9184,
+      "calibrated_threshold": 0.6248,
+      "false_positive_rate": 0.2124,
+      "detection_rate": 0.9048,
+      "training_time_sec": 1.47,
+      "latency_ms": 0.09,
+      "throughput_samples_sec": 11209,
+      "confusion_matrix": {
+        "tp": 76,
+        "fp": 492,
+        "fn": 8,
+        "tn": 1824
+      },
+      "observations_trained": 11200,
+      "last_trained": "2026-11-16 11:18 UTC"
+    },
+    "One-Class SVM": {
+      "name": "One-Class SVM",
+      "code": "OC-SVM-2026",
+      "version": "v2.5.0-prod",
+      "precision": 0.0662,
+      "recall": 0.9643,
+      "f1_score": 0.1239,
+      "accuracy": 0.5225,
+      "roc_auc": 0.7369,
+      "calibrated_threshold": 1.0,
+      "false_positive_rate": 0.4935,
+      "detection_rate": 0.9643,
+      "training_time_sec": 0.75,
+      "latency_ms": 0.05,
+      "throughput_samples_sec": 19064,
+      "confusion_matrix": {
+        "tp": 81,
+        "fp": 1143,
+        "fn": 3,
+        "tn": 1173
+      },
+      "observations_trained": 11200,
+      "last_trained": "2026-11-16 11:18 UTC"
+    },
+    "DBSCAN": {
+      "name": "DBSCAN",
+      "code": "DBSCAN-SPATIAL",
+      "version": "v2.2.0-prod",
+      "precision": 0.1638,
+      "recall": 0.9048,
+      "f1_score": 0.2774,
+      "accuracy": 0.835,
+      "roc_auc": 0.8755,
+      "calibrated_threshold": 1.0,
+      "false_positive_rate": 0.1675,
+      "detection_rate": 0.9048,
+      "training_time_sec": 0.88,
+      "latency_ms": 0.01,
+      "throughput_samples_sec": 67958,
+      "confusion_matrix": {
+        "tp": 76,
+        "fp": 388,
+        "fn": 8,
+        "tn": 1928
+      },
+      "observations_trained": 11200,
+      "last_trained": "2026-11-16 11:18 UTC"
+    },
+    "Conv1D Autoencoder": {
+      "name": "Conv1D Autoencoder",
+      "code": "CNN-AE-1D",
+      "version": "v1.5.0-prod",
+      "precision": 0.1275,
+      "recall": 0.9167,
+      "f1_score": 0.2238,
+      "accuracy": 0.7775,
+      "roc_auc": 0.9093,
+      "calibrated_threshold": 0.8751,
+      "false_positive_rate": 0.2275,
+      "detection_rate": 0.9167,
+      "training_time_sec": 23.44,
+      "latency_ms": 0.0,
+      "throughput_samples_sec": 567500,
+      "confusion_matrix": {
+        "tp": 77,
+        "fp": 527,
+        "fn": 7,
+        "tn": 1789
+      },
+      "observations_trained": 11200,
+      "last_trained": "2026-11-16 11:18 UTC"
+    },
+    "Statistical Detector": {
+      "name": "Statistical Detector",
+      "code": "STAT-HAMPEL-Z",
+      "version": "v3.0.0-prod",
+      "precision": 0.206,
+      "recall": 0.9048,
+      "f1_score": 0.3355,
+      "accuracy": 0.8746,
+      "roc_auc": 0.9097,
+      "calibrated_threshold": 0.952,
+      "false_positive_rate": 0.1265,
+      "detection_rate": 0.9048,
+      "training_time_sec": 0.01,
+      "latency_ms": 0.0,
+      "throughput_samples_sec": 1000000,
+      "confusion_matrix": {
+        "tp": 76,
+        "fp": 293,
+        "fn": 8,
+        "tn": 2023
+      },
+      "observations_trained": 11200,
+      "last_trained": "2026-11-16 11:18 UTC"
+    },
+    "Weighted Ensemble": {
+      "name": "Weighted Ensemble",
+      "code": "ENS-CONSENSUS",
+      "version": "v1.0.0-prod",
+      "precision": 0.1291,
+      "recall": 0.9286,
+      "f1_score": 0.2267,
+      "accuracy": 0.7783,
+      "roc_auc": 0.9157,
+      "false_positive_rate": 0.2271,
+      "detection_rate": 0.9286,
+      "training_time_sec": 27.82,
+      "latency_ms": 0.0,
+      "throughput_samples_sec": 1000000,
+      "confusion_matrix": {
+        "tp": 78,
+        "fp": 526,
+        "fn": 6,
+        "tn": 1790
+      },
+      "observations_trained": 11200,
+      "calibrated_threshold": 0.8737,
+      "last_trained": "2026-11-16 11:18 UTC"
+    }
+  },
+  "roc_curve": [
+    {
+      "fpr": 0.0,
+      "isolation_forest": 0.0,
+      "local_outlier_factor": 0.0,
+      "one_class_svm": 0.0,
+      "dbscan": 0.0,
+      "conv1d_autoencoder": 0.0,
+      "statistical_detector": 0.0,
+      "weighted_ensemble": 0.0
+    },
+    {
+      "fpr": 0.053,
+      "isolation_forest": 0.078,
+      "local_outlier_factor": 0.501,
+      "one_class_svm": 0.103,
+      "dbscan": 0.284,
+      "conv1d_autoencoder": 0.51,
+      "statistical_detector": 0.501,
+      "weighted_ensemble": 0.51
+    },
+    {
+      "fpr": 0.105,
+      "isolation_forest": 0.155,
+      "local_outlier_factor": 0.881,
+      "one_class_svm": 0.206,
+      "dbscan": 0.568,
+      "conv1d_autoencoder": 0.857,
+      "statistical_detector": 0.893,
+      "weighted_ensemble": 0.893
+    },
+    {
+      "fpr": 0.158,
+      "isolation_forest": 0.233,
+      "local_outlier_factor": 0.905,
+      "one_class_svm": 0.309,
+      "dbscan": 0.853,
+      "conv1d_autoencoder": 0.881,
+      "statistical_detector": 0.917,
+      "weighted_ensemble": 0.917
+    },
+    {
+      "fpr": 0.211,
+      "isolation_forest": 0.31,
+      "local_outlier_factor": 0.905,
+      "one_class_svm": 0.411,
+      "dbscan": 0.905,
+      "conv1d_autoencoder": 0.917,
+      "statistical_detector": 0.917,
+      "weighted_ensemble": 0.917
+    },
+    {
+      "fpr": 0.263,
+      "isolation_forest": 0.388,
+      "local_outlier_factor": 0.917,
+      "one_class_svm": 0.514,
+      "dbscan": 0.917,
+      "conv1d_autoencoder": 0.929,
+      "statistical_detector": 0.929,
+      "weighted_ensemble": 0.929
+    },
+    {
+      "fpr": 0.316,
+      "isolation_forest": 0.465,
+      "local_outlier_factor": 0.94,
+      "one_class_svm": 0.617,
+      "dbscan": 0.917,
+      "conv1d_autoencoder": 0.94,
+      "statistical_detector": 0.929,
+      "weighted_ensemble": 0.94
+    },
+    {
+      "fpr": 0.368,
+      "isolation_forest": 0.543,
+      "local_outlier_factor": 0.952,
+      "one_class_svm": 0.72,
+      "dbscan": 0.94,
+      "conv1d_autoencoder": 0.94,
+      "statistical_detector": 0.94,
+      "weighted_ensemble": 0.952
+    },
+    {
+      "fpr": 0.421,
+      "isolation_forest": 0.62,
+      "local_outlier_factor": 0.964,
+      "one_class_svm": 0.823,
+      "dbscan": 0.94,
+      "conv1d_autoencoder": 0.94,
+      "statistical_detector": 0.94,
+      "weighted_ensemble": 0.952
+    },
+    {
+      "fpr": 0.474,
+      "isolation_forest": 0.698,
+      "local_outlier_factor": 0.964,
+      "one_class_svm": 0.926,
+      "dbscan": 0.952,
+      "conv1d_autoencoder": 0.964,
+      "statistical_detector": 0.94,
+      "weighted_ensemble": 0.952
+    },
+    {
+      "fpr": 0.526,
+      "isolation_forest": 0.775,
+      "local_outlier_factor": 0.976,
+      "one_class_svm": 0.964,
+      "dbscan": 0.952,
+      "conv1d_autoencoder": 0.964,
+      "statistical_detector": 0.952,
+      "weighted_ensemble": 0.964
+    },
+    {
+      "fpr": 0.579,
+      "isolation_forest": 0.853,
+      "local_outlier_factor": 0.976,
+      "one_class_svm": 0.976,
+      "dbscan": 0.952,
+      "conv1d_autoencoder": 0.964,
+      "statistical_detector": 0.952,
+      "weighted_ensemble": 0.964
+    },
+    {
+      "fpr": 0.632,
+      "isolation_forest": 0.93,
+      "local_outlier_factor": 0.988,
+      "one_class_svm": 0.988,
+      "dbscan": 0.964,
+      "conv1d_autoencoder": 0.976,
+      "statistical_detector": 0.964,
+      "weighted_ensemble": 0.988
+    },
+    {
+      "fpr": 0.684,
+      "isolation_forest": 0.988,
+      "local_outlier_factor": 0.988,
+      "one_class_svm": 0.988,
+      "dbscan": 0.988,
+      "conv1d_autoencoder": 0.976,
+      "statistical_detector": 0.976,
+      "weighted_ensemble": 0.988
+    },
+    {
+      "fpr": 0.737,
+      "isolation_forest": 0.988,
+      "local_outlier_factor": 1.0,
+      "one_class_svm": 0.988,
+      "dbscan": 0.988,
+      "conv1d_autoencoder": 0.976,
+      "statistical_detector": 0.988,
+      "weighted_ensemble": 0.988
+    },
+    {
+      "fpr": 0.789,
+      "isolation_forest": 0.988,
+      "local_outlier_factor": 1.0,
+      "one_class_svm": 0.988,
+      "dbscan": 0.988,
+      "conv1d_autoencoder": 0.976,
+      "statistical_detector": 0.988,
+      "weighted_ensemble": 0.988
+    },
+    {
+      "fpr": 0.842,
+      "isolation_forest": 0.988,
+      "local_outlier_factor": 1.0,
+      "one_class_svm": 0.988,
+      "dbscan": 1.0,
+      "conv1d_autoencoder": 1.0,
+      "statistical_detector": 0.988,
+      "weighted_ensemble": 0.988
+    },
+    {
+      "fpr": 0.895,
+      "isolation_forest": 0.988,
+      "local_outlier_factor": 1.0,
+      "one_class_svm": 0.988,
+      "dbscan": 1.0,
+      "conv1d_autoencoder": 1.0,
+      "statistical_detector": 0.988,
+      "weighted_ensemble": 0.988
+    },
+    {
+      "fpr": 0.947,
+      "isolation_forest": 1.0,
+      "local_outlier_factor": 1.0,
+      "one_class_svm": 0.988,
+      "dbscan": 1.0,
+      "conv1d_autoencoder": 1.0,
+      "statistical_detector": 1.0,
+      "weighted_ensemble": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "isolation_forest": 1.0,
+      "local_outlier_factor": 1.0,
+      "one_class_svm": 1.0,
+      "dbscan": 1.0,
+      "conv1d_autoencoder": 1.0,
+      "statistical_detector": 1.0,
+      "weighted_ensemble": 1.0
+    }
+  ],
+  "weights": {
+    "Isolation Forest": 0.22,
+    "Conv1D Autoencoder": 0.22,
+    "Local Outlier Factor": 0.16,
+    "One-Class SVM": 0.16,
+    "Statistical Detector": 0.14,
+    "DBSCAN": 0.1
+  }
+}

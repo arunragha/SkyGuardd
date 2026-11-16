@@ -1,0 +1,79 @@
+name: SkyGuard Continuous Integration Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: React 18 / Vite / TypeScript Build Verification
+  # -------------------------------------------------------------
+  frontend-build:
+    name: Frontend Build & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+
+      - name: Compile TypeScript & Build Production Bundle
+        run: npm run build
+
+  # -------------------------------------------------------------
+  # Job 2: Node.js / Express / SQLite Backend Test Suite
+  # -------------------------------------------------------------
+  backend-tests:
+    name: Backend Test Suite (SQLite & API Routes)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run Backend Node Test Suite
+        working-directory: ./backend
+        run: npm test
+
+  # -------------------------------------------------------------
+  # Job 3: Python FastAPI Machine Learning Pytest Suite
+  # -------------------------------------------------------------
+  ml-tests:
+    name: Python ML Engine Pytest Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install CPU PyTorch & Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r ml-service/requirements.txt
+
+      - name: Run Pytest ML Suite (Jena Climate Data, Conv1D, DBSCAN, Hampel, Ensemble)
+        run: |
+          python -m pytest ml-service/tests/test_ml_engine.py -v
