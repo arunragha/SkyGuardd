@@ -3,6 +3,7 @@ import cors from 'cors';
 import { config } from './config/index.js';
 import { requestLogger, centralizedErrorHandler } from './middleware/errorHandler.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
+import { securityHeaders } from './middleware/securityHeaders.js';
 import { telemetryService } from './services/telemetryService.js';
 import { mlService } from './services/mlService.js';
 import { stationRepository } from './db/repositories/stationRepository.js';
@@ -21,9 +22,22 @@ import reportRoutes from './routes/reportRoutes.js';
 
 const app = express();
 
-// Base middleware
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+// Security & Base middleware
+app.use(securityHeaders);
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow non-browser requests (e.g. mobile, curl, server-to-server) or listed origins
+    if (!origin || config.corsOrigins.includes(origin) || config.corsOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS policy violation: origin ${origin} is not authorized`));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.use(express.json({ limit: '2mb' }));
 app.use(requestLogger);
 app.use(rateLimiter({ windowMs: 60000, max: 500 }));
 

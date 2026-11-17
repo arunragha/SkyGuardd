@@ -6,7 +6,9 @@ const router = Router();
 
 router.get('/', anomalyController.getAll);
 router.get('/:id', anomalyController.getById);
-router.patch('/:id', anomalyController.updateStatus);
-router.post('/detect', anomalyController.detectBatch);
+
+// Protected actions: Modifying anomaly status and running batch ML inference require auth
+router.patch('/:id', authenticateToken, anomalyController.updateStatus);
+router.post('/detect', authenticateToken, anomalyController.detectBatch);
 
 export default router;

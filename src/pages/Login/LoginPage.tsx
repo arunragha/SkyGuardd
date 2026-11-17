@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { Button } from '../../components/ui/Button';
@@ -8,36 +8,58 @@ import {
   Lock, 
   Mail, 
   ArrowRight, 
-  Sparkles, 
-  Activity, 
-  Radar, 
-  CheckCircle2, 
-  CloudLightning 
+  CloudLightning,
+  AlertCircle
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const { showToast } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [email, setEmail] = useState('s.lin@skyguard.ai');
-  const [password, setPassword] = useState('••••••••••••');
+  const from = (location.state as any)?.from?.pathname || '/overview';
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // If already authenticated, redirect
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    if (!email || !password) {
+      setErrorMessage('Please enter both email and password.');
+      return;
+    }
+
     setIsLoading(true);
-    await login(email, password);
+    const result = await login(email, password);
     setIsLoading(false);
-    showToast('Authenticated as Dr. Sarah Lin (Lead Analyst)', 'success', 'Session Established');
-    navigate('/overview');
+
+    if (result.success) {
+      showToast(`Authenticated as ${email}`, 'success', 'Session Established');
+      navigate(from, { replace: true });
+    } else {
+      setErrorMessage(result.error || 'Authentication failed. Please verify your credentials.');
+      showToast(result.error || 'Authentication failed', 'error');
+    }
   };
 
-  const handleDemoFill = () => {
-    setEmail('s.lin@skyguard.ai');
-    setPassword('skyguard-demo-2026');
-    showToast('Demo mission analyst credentials loaded.', 'info');
+  const handleAdminCredentialsFill = () => {
+    setEmail('admin@skyguard.io');
+    setPassword('SkyGuard@2026!');
+    setErrorMessage(null);
+    showToast('Administrator clearance credentials loaded.', 'info');
   };
 
   return (
@@ -63,21 +85,18 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Futuristic Graphic / Mission Radar */}
+        {/* Center Graphic */}
         <div className="relative z-10 my-auto py-12 flex flex-col items-center text-center">
           <div className="relative w-64 h-64 flex items-center justify-center mb-8">
-            {/* Concentric radar rings */}
             <div className="absolute inset-0 rounded-full border border-cyan-500/20 animate-ping-slow" />
             <div className="absolute inset-4 rounded-full border border-blue-500/30" />
             <div className="absolute inset-12 rounded-full border border-cyan-400/20" />
             <div className="absolute inset-20 rounded-full border border-white/10" />
 
-            {/* Rotating radar sweep */}
             <div className="absolute inset-0 rounded-full border border-cyan-400/40 animate-radar" style={{
               background: 'conic-gradient(from 0deg, transparent 0deg, transparent 300deg, rgba(34, 211, 238, 0.25) 360deg)'
             }} />
 
-            {/* Center icon */}
             <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-[#121D2E] border border-cyan-400/60 shadow-2xl">
               <CloudLightning className="w-10 h-10 text-[#22D3EE]" />
             </div>
@@ -87,7 +106,7 @@ export const LoginPage: React.FC = () => {
             "See Beyond the Weather."
           </h2>
           <p className="text-xs text-[#94A3B8] max-w-sm mt-2 leading-relaxed">
-            Real-time sensory telemetry synthesis powered by multi-algorithm unsupervised outlier engines.
+            Multi-sensor environmental surveillance powered by research-grade machine learning and physics attribution.
           </p>
         </div>
 
@@ -95,9 +114,9 @@ export const LoginPage: React.FC = () => {
         <div className="relative z-10 flex items-center justify-between p-4 rounded-2xl bg-[#121D2E]/80 border border-white/10 text-xs font-mono">
           <div className="flex items-center gap-2 text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>12 Telemetry Arrays Synchronized</span>
+            <span>12 Stations Online · WAL Persistence Active</span>
           </div>
-          <span className="text-[#64748B]">Latency: 4.8ms</span>
+          <span className="text-[#64748B]">v7.0 Enterprise</span>
         </div>
       </div>
 
@@ -118,12 +137,19 @@ export const LoginPage: React.FC = () => {
 
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-[#F8FAFC]">
-              Console Sign In
+              Mission Console Sign In
             </h2>
             <p className="text-xs text-[#94A3B8] mt-1">
-              Enter your authorized meteorological credentials to access telemetry streams.
+              Enter your authorized credentials to access station telemetry and anomaly streams.
             </p>
           </div>
+
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2 text-red-400 text-xs font-mono animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4 text-xs font-mono">
             <div>
@@ -135,8 +161,8 @@ export const LoginPage: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="analyst@skyguard.ai"
-                  className="w-full bg-[#121D2E] border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-[#F8FAFC] focus:outline-none focus:border-cyan-400"
+                  placeholder="admin@skyguard.io"
+                  className="w-full bg-[#121D2E] border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-[#F8FAFC] focus:outline-none focus:border-cyan-400 transition-colors"
                 />
               </div>
             </div>
@@ -156,7 +182,7 @@ export const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-[#121D2E] border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-[#F8FAFC] focus:outline-none focus:border-cyan-400"
+                  className="w-full bg-[#121D2E] border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-[#F8FAFC] focus:outline-none focus:border-cyan-400 transition-colors"
                 />
               </div>
             </div>
@@ -174,10 +200,10 @@ export const LoginPage: React.FC = () => {
               
               <button
                 type="button"
-                onClick={handleDemoFill}
+                onClick={handleAdminCredentialsFill}
                 className="text-[11px] text-[#22D3EE] hover:underline"
               >
-                Auto-fill Demo
+                Auto-fill Admin
               </button>
             </div>
 
@@ -204,4 +230,3 @@ export const LoginPage: React.FC = () => {
     </div>
   );
 };
-

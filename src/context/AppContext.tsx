@@ -59,6 +59,9 @@ interface AppContextType {
 
   // Live controls
   backendConnected: boolean;
+  demoMode: boolean;
+  toggleDemoMode: () => void;
+  isLoadingData: boolean;
   telemetryMode: 'live_simulation' | 'historical_replay';
   switchTelemetryMode: (mode: 'live_simulation' | 'historical_replay') => Promise<void>;
   isLiveMonitoringPaused: boolean;
@@ -81,17 +84,19 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [stations, setStations] = useState<WeatherStation[]>(DEMO_STATIONS);
+  const [demoMode, setDemoModeState] = useState<boolean>(() => api.isDemoMode());
+  const [stations, setStations] = useState<WeatherStation[]>(() => api.isDemoMode() ? DEMO_STATIONS : []);
   const [selectedStationId, setSelectedStationId] = useState<string>('st-01');
-  const [timeSeriesData, setTimeSeriesData] = useState<WeatherMetricPoint[]>(generateTimeSeriesData());
-  const [anomalies, setAnomalies] = useState<AnomalyRecord[]>(DEMO_ANOMALIES);
+  const [timeSeriesData, setTimeSeriesData] = useState<WeatherMetricPoint[]>(() => api.isDemoMode() ? generateTimeSeriesData() : []);
+  const [anomalies, setAnomalies] = useState<AnomalyRecord[]>(() => api.isDemoMode() ? DEMO_ANOMALIES : []);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AnomalyRecord | null>(null);
   const [isDetecting, setIsDetecting] = useState<boolean>(false);
-  const [alerts, setAlerts] = useState<AlertItem[]>(DEMO_ALERTS);
+  const [alerts, setAlerts] = useState<AlertItem[]>(() => api.isDemoMode() ? DEMO_ALERTS : []);
   const [models, setModels] = useState<MLModel[]>(DEMO_MODELS);
   const [activeModelId, setActiveModelId] = useState<string>('mdl-ensemble');
   const [isTraining, setIsTraining] = useState<boolean>(false);
   const [backendConnected, setBackendConnected] = useState<boolean>(false);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
   const [telemetryMode, setTelemetryMode] = useState<'live_simulation' | 'historical_replay'>('live_simulation');
   const [isLiveMonitoringPaused, setIsLiveMonitoringPaused] = useState<boolean>(false);
   const [refreshInterval, setRefreshInterval] = useState<number>(10);
@@ -99,7 +104,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const selectedStation = stations.find(s => s.id === selectedStationId) || stations[0];
+  const selectedStation: WeatherStation = stations.find(s => s.id === selectedStationId) || stations[0] || {
+    id: 'st-01',
+    name: 'Ridge Peak Observatory',
+    code: 'SKY-RP-01',
+    location: 'Mount Rainier Foothills, WA',
+    region: 'Pacific Northwest',
+    lat: 46.8523,
+    lng: -121.7603,
+    status: 'online',
+    lastCommunication: 'Connecting...',
+    sensorCount: 16,
+    anomalyCount: 0,
+    elevation: 1420,
+    firmwareVersion: 'v7.0.0',
+    batteryLevel: 98,
+    signalStrength: 94,
+    currentReadings: {
+      temperature: 21.4,
+      humidity: 58,
+      pressure: 1012.8,
+      windSpeed: 14.2,
+      windDirection: 'WNW',
+      solarRadiation: 650,
+      precipitation: 0.0
+    }
+  };
 
   const showToast = (message: string, type: 'success' | 'warning' | 'error' | 'info' = 'info', title?: string) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -238,6 +268,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       } catch (err) {
         console.warn('Backend sync error:', err);
+      } finally {
+        setIsLoadingData(false);
       }
     };
 
@@ -247,6 +279,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (sse) sse.close();
     };
   }, []);
+
+  const toggleDemoMode = () => {
+    const next = !demoMode;
+    setDemoModeState(next);
+    api.setDemoMode(next);
+    if (next) {
+      setStations(DEMO_STATIONS);
+      setAnomalies(DEMO_ANOMALIES);
+      setAlerts(DEMO_ALERTS);
+      setTimeSeriesData(generateTimeSeriesData());
+      showToast('Switched to Demonstration Mode with synthetic telemetry.', 'info', 'Demo Mode Enabled');
+    } else {
+      showToast('Switched to Live Production Mode. Fetching fleet telemetry...', 'info', 'Production Mode Active');
+      refreshData();
+    }
+  };
 
   const switchTelemetryMode = async (mode: 'live_simulation' | 'historical_replay') => {
     setTelemetryMode(mode);
@@ -415,6 +463,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         trainModel,
         isTraining,
         backendConnected,
+        demoMode,
+        toggleDemoMode,
+        isLoadingData,
         telemetryMode,
         switchTelemetryMode,
         isLiveMonitoringPaused,

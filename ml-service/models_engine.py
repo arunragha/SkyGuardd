@@ -25,7 +25,8 @@ from sklearn.svm import OneClassSVM
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (
     precision_score, recall_score, f1_score, accuracy_score,
-    roc_curve, auc, precision_recall_curve, confusion_matrix
+    roc_curve, auc, precision_recall_curve, confusion_matrix,
+    average_precision_score
 )
 import joblib
 
@@ -170,6 +171,7 @@ class WeatherMLEngine:
         dynamic threshold calibration on validation split,
         and scientific ground-truth evaluation on unseen test split.
         """
+        self._initialize_detectors()
         print("[MLEngine] Preparing real weather dataset and chronological splits...")
         df_train, df_val, df_test, y_test, benchmark_summary = prepare_train_val_test_splits()
 
@@ -264,10 +266,15 @@ class WeatherMLEngine:
             # ROC & PR Curves
             fpr_arr, tpr_arr, _ = roc_curve(y_test, test_scores)
             roc_auc_val = float(auc(fpr_arr, tpr_arr))
+
+            prec_curve_arr, rec_curve_arr, _ = precision_recall_curve(y_test, test_scores)
+            pr_auc_val = float(average_precision_score(y_test, test_scores))
             
             cm = confusion_matrix(y_test, y_pred)
             tn, fp, fn, tp = [int(v) for v in cm.ravel()]
             fpr_rate = float(fp / max(1, (fp + tn)))
+            fnr_rate = float(fn / max(1, (fn + tp)))
+            specificity = float(tn / max(1, (tn + fp)))
 
             evaluation_benchmarks[name] = {
                 "name": name,
@@ -278,9 +285,12 @@ class WeatherMLEngine:
                 "f1_score": round(f1, 4),
                 "accuracy": round(acc, 4),
                 "roc_auc": round(roc_auc_val, 4),
-                "calibrated_threshold": round(calibrated_threshold, 4),
+                "pr_auc": round(pr_auc_val, 4),
+                "specificity": round(specificity, 4),
                 "false_positive_rate": round(fpr_rate, 4),
+                "false_negative_rate": round(fnr_rate, 4),
                 "detection_rate": round(rec, 4), # recall on ground truth anomalies
+                "calibrated_threshold": round(calibrated_threshold, 4),
                 "training_time_sec": train_duration_sec,
                 "latency_ms": round(infer_latency_ms, 2),
                 "throughput_samples_sec": int(1000.0 / max(0.001, infer_latency_ms)),
@@ -291,8 +301,9 @@ class WeatherMLEngine:
 
         # 2. Evaluate Weighted Consensus Ensemble
         t_ens_start = time.time()
-        val_ens_scores, _, _ = self.ensemble.aggregate_predictions(val_scores_dict)
-        self.ensemble.calibrate_threshold(val_ens_scores, target_contamination=0.035)
+        # Calibrate weights on validation scores
+        pseudo_y_val = (val_scores_dict.get("Statistical Detector", np.zeros(len(X_val))) > 0.85).astype(int)
+        self.ensemble.calibrate_weights_and_threshold(val_scores_dict, pseudo_y_val, target_contamination=0.035)
 
         test_ens_scores, test_ens_pred, test_ens_votes = self.ensemble.aggregate_predictions(test_scores_dict)
         ens_latency_ms = ((time.time() - t_ens_start) / len(X_test)) * 1000.0
@@ -303,19 +314,27 @@ class WeatherMLEngine:
         ens_acc = float(accuracy_score(y_test, test_ens_pred))
         ens_fpr, ens_tpr, _ = roc_curve(y_test, test_ens_scores)
         ens_auc = float(auc(ens_fpr, ens_tpr))
+        ens_pr_auc = float(average_precision_score(y_test, test_ens_scores))
+
         ens_cm = confusion_matrix(y_test, test_ens_pred)
         tn, fp, fn, tp = [int(v) for v in ens_cm.ravel()]
+        ens_fpr_rate = float(fp / max(1, (fp + tn)))
+        ens_fnr_rate = float(fn / max(1, (fn + tp)))
+        ens_spec = float(tn / max(1, (tn + fp)))
 
         evaluation_benchmarks["Weighted Ensemble"] = {
             "name": "Weighted Ensemble",
             "code": "ENS-CONSENSUS",
-            "version": "v1.0.0-prod",
+            "version": "v2.0.0-calibrated",
             "precision": round(ens_prec, 4),
             "recall": round(ens_rec, 4),
             "f1_score": round(ens_f1, 4),
             "accuracy": round(ens_acc, 4),
             "roc_auc": round(ens_auc, 4),
-            "false_positive_rate": round(float(fp / max(1, (fp + tn))), 4),
+            "pr_auc": round(ens_pr_auc, 4),
+            "specificity": round(ens_spec, 4),
+            "false_positive_rate": round(ens_fpr_rate, 4),
+            "false_negative_rate": round(ens_fnr_rate, 4),
             "detection_rate": round(ens_rec, 4),
             "training_time_sec": sum(m["training_time_sec"] for m in evaluation_benchmarks.values()),
             "latency_ms": round(ens_latency_ms, 2),
@@ -334,11 +353,24 @@ class WeatherMLEngine:
             for m_name in list(self.models.keys()) + ["Weighted Ensemble"]:
                 scores = test_scores_dict[m_name] if m_name in test_scores_dict else test_ens_scores
                 m_fpr, m_tpr, _ = roc_curve(y_test, scores)
-                # Interpolate TPR at target FPR
                 interpolated_tpr = float(np.interp(target_fpr, m_fpr, m_tpr))
                 key = m_name.lower().replace(" ", "_").replace("-", "_")
                 point[key] = round(interpolated_tpr, 3)
             roc_display.append(point)
+
+        # 4. Compute sampled PR curve coordinates across models for frontend display
+        pr_display = []
+        sample_rec_points = np.linspace(0.0, 1.0, 20)
+        for target_rec in sample_rec_points:
+            point = {"recall": round(float(target_rec), 3)}
+            for m_name in list(self.models.keys()) + ["Weighted Ensemble"]:
+                scores = test_scores_dict[m_name] if m_name in test_scores_dict else test_ens_scores
+                m_prec, m_rec, _ = precision_recall_curve(y_test, scores)
+                # Reverse for interpolation since recall is decreasing in precision_recall_curve
+                interpolated_prec = float(np.interp(target_rec, m_rec[::-1], m_prec[::-1]))
+                key = m_name.lower().replace(" ", "_").replace("-", "_")
+                point[key] = round(interpolated_prec, 3)
+            pr_display.append(point)
 
         self.metrics_cache = evaluation_benchmarks
         self.last_training_summary = {
@@ -349,19 +381,25 @@ class WeatherMLEngine:
             "benchmark_anomalies": int(np.sum(y_test)),
             "models": evaluation_benchmarks,
             "roc_curve": roc_display,
+            "pr_curve": pr_display,
             "weights": self.ensemble.weights
         }
 
-        # Save structured evaluation results
+        # Save structured evaluation results (JSON)
         with open(EVALUATION_RESULTS_FILE, "w") as f:
             json.dump(self.last_training_summary, f, indent=2)
+
+        # Export evaluation results to tabular CSV
+        csv_path = os.path.join(RESULTS_DIR, "evaluation_results.csv")
+        csv_df = pd.DataFrame(list(evaluation_benchmarks.values()))
+        csv_df.to_csv(csv_path, index=False)
 
         # Save models to disk
         self.save_models()
 
         print("[MLEngine] Training and genuine evaluation completed:")
         for name, metrics in evaluation_benchmarks.items():
-            print(f"  • {name:20s} | F1: {metrics['f1_score']:.3f} | Prec: {metrics['precision']:.3f} | Rec: {metrics['recall']:.3f} | AUC: {metrics['roc_auc']:.3f}")
+            print(f"  • {name:20s} | F1: {metrics['f1_score']:.3f} | Prec: {metrics['precision']:.3f} | Rec: {metrics['recall']:.3f} | ROC-AUC: {metrics['roc_auc']:.3f} | PR-AUC: {metrics.get('pr_auc', 0.0):.3f}")
 
         return self.last_training_summary
 
@@ -517,3 +555,14 @@ MLModelsEngine = WeatherMLEngine
 
 # Singleton Engine Instance
 ml_engine = WeatherMLEngine()
+
+if __name__ == "__main__":
+    print("=" * 70)
+    print("SkyGuard 7.0 Machine Learning Retraining & Scientific Evaluation")
+    print("=" * 70)
+    results = ml_engine.train_and_evaluate_all()
+    print("\nTraining & Evaluation Complete. Models and metrics persisted.")
+    for m_name, m in results.get("models", {}).items():
+        print(f" • {m_name:<24}: F1={m.get('f1_score',0):.4f} | Prec={m.get('precision',0):.4f} | Rec={m.get('recall',0):.4f} | ROC-AUC={m.get('roc_auc',0):.4f} | PR-AUC={m.get('pr_auc',0):.4f}")
+    print("=" * 70)
+

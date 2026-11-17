@@ -2,13 +2,16 @@ import os
 import sys
 import numpy as np
 import pandas as pd
-import pytest
+try:
+    import pytest
+except ImportError:
+    pytest = None
 import torch
 
 # Ensure ml-service root is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from data_pipeline import prepare_train_val_test_splits, inject_controlled_anomalies
+from data_pipeline import prepare_train_val_test_splits, inject_controlled_anomalies, verify_no_data_leakage
 from models.conv1d_autoencoder import Conv1DAutoencoderModel, Conv1DAutoencoderDetector
 from models.statistical_detector import StatisticalAnomalyDetector
 from models.dbscan_detector import DBSCANInferenceDetector
@@ -25,6 +28,9 @@ def test_data_pipeline_and_chronological_split():
     assert len(df_train) == 11200, f"Expected 11200 train samples, got {len(df_train)}"
     assert len(df_val) == 2400, f"Expected 2400 val samples, got {len(df_val)}"
     assert len(df_test) == 2400, f"Expected 2400 test samples, got {len(df_test)}"
+
+    # Leakage test
+    assert verify_no_data_leakage(df_train, df_val, df_test) == True
     
     # Check engineered meteorological features
     expected_features = [
@@ -37,10 +43,11 @@ def test_data_pipeline_and_chronological_split():
         assert not df_train[feat].isnull().any(), f"NaNs detected in train feature {feat}"
         assert not df_test[feat].isnull().any(), f"NaNs detected in test feature {feat}"
 
-    # Check benchmark anomalies
+    # Check benchmark anomalies across 10 categories
     assert len(y_test) == len(df_test)
     assert y_test.sum() == 84, f"Expected 84 injected benchmark anomalies, got {y_test.sum()}"
     assert benchmark_summary['total_anomalies_injected'] == 84
+    assert benchmark_summary['anomaly_types_implemented'] == 10
 
 
 def test_conv1d_autoencoder_architecture():
@@ -194,3 +201,73 @@ def test_models_engine_inference_on_single_sample():
     assert res_anom['anomaly_score'] > 0.70
     assert res_anom['severity'] in ['high', 'critical']
     assert res_anom['root_cause']['dominant_feature'] in ['temperature', 'pressure', 'wind_speed']
+
+
+def test_ensemble_validation_weight_calibration():
+    """Verify ensemble weights and decision threshold are calibrated strictly on validation data."""
+    ensemble = WeightedConsensusEnsemble()
+    
+    # 50 validation samples with a simulated detector performance disparity
+    val_scores = {
+        'Conv1D Autoencoder': np.array([0.1]*45 + [0.9]*5),
+        'Statistical Detector': np.array([0.15]*45 + [0.85]*5),
+        'Local Outlier Factor': np.array([0.5]*50), # uninformative
+        'DBSCAN': np.array([0.2]*45 + [0.8]*5),
+        'One-Class SVM': np.array([0.3]*45 + [0.7]*5),
+        'Isolation Forest': np.array([0.4]*45 + [0.6]*5)
+    }
+    y_val = np.array([0]*45 + [1]*5)
+
+    calib_result = ensemble.calibrate_weights_and_threshold(val_scores, y_val, target_contamination=0.04)
+    assert 'calibrated_weights' in calib_result
+    assert 'calibrated_threshold' in calib_result
+    # The informative detector (Conv1D) should receive higher weight than uninformative LOF
+    assert ensemble.weights['Conv1D Autoencoder'] > ensemble.weights['Local Outlier Factor']
+    assert np.isclose(sum(ensemble.weights.values()), 1.0, atol=1e-3)
+
+
+if __name__ == "__main__":
+    import time
+    print("=" * 70)
+    print("SkyGuard 7.0 Machine Learning Verification Suite")
+    print("=" * 70)
+    
+    test_functions = [
+        ("Data Pipeline & Chronological Split", test_data_pipeline_and_chronological_split),
+        ("Conv1D Deep Autoencoder Architecture", test_conv1d_autoencoder_architecture),
+        ("DBSCAN Out-of-Sample BallTree Inference", test_dbscan_out_of_sample_inference),
+        ("Statistical Hampel Filter & Rolling Z-Score", test_statistical_detector_hampel_and_zscore),
+        ("Root Cause Sensor Attribution", test_root_cause_attribution),
+        ("Weighted Consensus Ensemble & Severity", test_weighted_consensus_ensemble_and_severity),
+        ("ML Models Engine Single Sample Inference", test_models_engine_inference_on_single_sample),
+        ("Ensemble Validation Weight Calibration", test_ensemble_validation_weight_calibration),
+    ]
+    
+    passed = 0
+    failed = 0
+    total_start = time.time()
+    
+    for name, test_fn in test_functions:
+        t0 = time.time()
+        try:
+            test_fn()
+            elapsed = (time.time() - t0) * 1000
+            print(f" [PASS] {name} ({elapsed:.1f}ms)")
+            passed += 1
+        except Exception as e:
+            elapsed = (time.time() - t0) * 1000
+            print(f" [FAIL] {name} ({elapsed:.1f}ms): {e}")
+            import traceback
+            traceback.print_exc()
+            failed += 1
+            
+    total_elapsed = time.time() - total_start
+    print("=" * 70)
+    print(f"Summary: {passed} passed, {failed} failed in {total_elapsed:.2f}s")
+    print("=" * 70)
+    if failed > 0:
+        sys.exit(1)
+    else:
+        sys.exit(0)
+
+

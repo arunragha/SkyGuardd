@@ -36,6 +36,8 @@ export const ModelsPage: React.FC = () => {
 
   const [selectedModelForModal, setSelectedModelForModal] = useState<MLModel | null>(null);
   const [modelToTrain, setModelToTrain] = useState<MLModel | null>(null);
+  const [activeCurveTab, setActiveCurveTab] = useState<'roc' | 'pr'>('roc');
+  const [prCurveData, setPrCurveData] = useState<any[]>([]);
 
   const activeModel = models.find(m => m.id === activeModelId) || models[0];
 
@@ -52,15 +54,20 @@ export const ModelsPage: React.FC = () => {
     { fpr: 1.00, isolation_forest: 1.00, local_outlier_factor: 1.00, one_class_svm: 1.00, dbscan: 1.00, conv1d_autoencoder: 1.00, statistical_detector: 1.00, weighted_ensemble: 1.00 }
   ]);
 
-  // Try fetching live ROC curve if available from API
+  // Try fetching live curves from backend
   useEffect(() => {
-    const fetchLiveRoc = async () => {
+    const fetchLiveCurves = async () => {
       const data = await api.getModels();
-      if (data && data.roc_curve && data.roc_curve.length > 0) {
-        setRocCurveData(data.roc_curve);
+      if (data) {
+        if (data.roc_curve && data.roc_curve.length > 0) {
+          setRocCurveData(data.roc_curve);
+        }
+        if (data.pr_curve && data.pr_curve.length > 0) {
+          setPrCurveData(data.pr_curve);
+        }
       }
     };
-    fetchLiveRoc();
+    fetchLiveCurves();
   }, []);
 
   // Confusion matrix dynamically linked to activeModel

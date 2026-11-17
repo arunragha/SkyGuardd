@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 import { OverviewPage } from './pages/Overview/OverviewPage';
 import { MonitoringPage } from './pages/Monitoring/MonitoringPage';
@@ -23,13 +24,20 @@ export function App() {
       <AuthProvider>
         <AppProvider>
           <Routes>
-            {/* Authentication Routes */}
+            {/* Public Authentication Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            {/* Core Application Protected Shell */}
-            <Route path="/" element={<DashboardLayout />}>
+            {/* Core Application Authenticated Shell */}
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<Navigate to="/overview" replace />} />
               <Route path="overview" element={<OverviewPage />} />
               <Route path="monitoring" element={<MonitoringPage />} />
@@ -52,4 +60,3 @@ export function App() {
 }
 
 export default App;
-

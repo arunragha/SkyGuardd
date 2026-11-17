@@ -35,6 +35,8 @@ export const Topbar: React.FC = () => {
     setSearchQuery,
     refreshData,
     backendConnected,
+    demoMode,
+    toggleDemoMode,
     telemetryMode,
     switchTelemetryMode
   } = useApp();
@@ -179,6 +181,20 @@ export const Topbar: React.FC = () => {
           <span className={`w-1.5 h-1.5 rounded-full ${backendConnected ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-amber-400'}`} />
           <span>{backendConnected ? 'ONLINE' : 'CACHED'}</span>
         </div>
+
+        {/* Demo Mode Toggle */}
+        <button
+          onClick={toggleDemoMode}
+          className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition-all ${
+            demoMode 
+              ? 'bg-amber-950/40 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-950' 
+              : 'bg-[#121D2E] text-[#94A3B8] border-white/5 hover:text-white hover:bg-white/5'
+          }`}
+          title={demoMode ? 'Click to exit Demo Mode and connect to live backend' : 'Click to enable offline Demonstration Mode with synthetic telemetry'}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${demoMode ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'}`} />
+          <span>{demoMode ? 'DEMO ACTIVE' : 'LIVE PROD'}</span>
+        </button>
 
         {/* Manual Refresh Button */}
         <button

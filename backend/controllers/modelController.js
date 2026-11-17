@@ -1,11 +1,38 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { modelRepository } from '../db/repositories/modelRepository.js';
 import { mlService } from '../services/mlService.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const EVAL_FILE = path.join(__dirname, '..', '..', 'ml-service', 'data', 'evaluation_results.json');
+
 export const modelController = {
-  getAll: (req, res, next) => {
+  getAll: async (req, res, next) => {
     try {
       const models = modelRepository.getAll();
-      res.json({ success: true, count: models.length, models });
+      let roc_curve = [];
+      let pr_curve = [];
+
+      try {
+        const benchmarks = await mlService.getBenchmarks();
+        if (benchmarks) {
+          roc_curve = benchmarks.roc_curve || [];
+          pr_curve = benchmarks.pr_curve || [];
+        }
+      } catch (e) {
+        // Fallback to local evaluation results file if ML service is sleeping
+        if (fs.existsSync(EVAL_FILE)) {
+          try {
+            const fileData = JSON.parse(fs.readFileSync(EVAL_FILE, 'utf-8'));
+            roc_curve = fileData.roc_curve || [];
+            pr_curve = fileData.pr_curve || [];
+          } catch (_) {}
+        }
+      }
+
+      res.json({ success: true, count: models.length, models, roc_curve, pr_curve });
     } catch (err) {
       next(err);
     }

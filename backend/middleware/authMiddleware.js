@@ -4,7 +4,12 @@ import { userRepository } from '../db/repositories/userRepository.js';
 
 export function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+
+  // Allow bearer token in query parameter for secure direct file export downloads
+  if (!token && req.query && req.query.token) {
+    token = req.query.token;
+  }
 
   if (!token) {
     return res.status(401).json({ success: false, error: 'Authentication required. Missing Bearer token.' });
